@@ -33,8 +33,8 @@ export async function stage(browser, player, { fixedClock = true } = {}) {
         time = seconds;
         audio.dispatchEvent(new Event('timeupdate'));
         const el = (id) => document.getElementById(id);
-        if (!el('ending').hidden) return true;
-        const state = !el('intro').hidden ? 'intro' : !el('rest').hidden ? 'rest' : el('lanes').innerHTML;
+        const state = !el('ending').hidden ? 'art:' + (el('screen').dataset.paintTime ?? seconds)
+          : !el('intro').hidden ? 'intro' : !el('rest').hidden ? 'rest' : el('lanes').innerHTML;
         const changed = state !== previous;
         previous = state;
         return changed;

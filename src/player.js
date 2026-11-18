@@ -11,6 +11,10 @@ const art = JSON.parse($('#art').textContent),
 const words = JSON.parse($('#edition').textContent);
 const digest = $('#wordhash').textContent.trim();
 const song = JSON.parse($('#song').textContent);
+if (art.coverPalette) {
+  for (const [index, name] of ['backdrop', 'paper', 'lit', '', 'muted'].entries())
+    if (name) document.documentElement.style.setProperty('--' + name, '#' + art.live[index]);
+}
 const base = [song.artist, song.title].filter(Boolean).join(' - ') + ' (Karaoke)';
 const bytes = Uint8Array.from(atob($('#sound').textContent.trim()), (c) => c.charCodeAt(0));
 audio.src = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
@@ -69,13 +73,17 @@ function show() {
   const intro = t < score.introEnd,
     end = t >= score.outro;
   const rest = score.rests.some(([a, b]) => a <= t && t < b);
-  $('#intro').hidden = !intro;
+  const cover = end || (intro && score.introArtStart !== null && t >= score.introArtStart);
+  $('#intro').hidden = !intro || cover;
   $('#rest').hidden = !rest;
-  $('#ending').hidden = !end;
+  $('#ending').hidden = !cover;
   $('#lanes').hidden = intro || rest || end;
-  if (end) {
+  if (cover) {
     const frame = cdg.render(t);
-    if (frame.isChanged) ctx.putImageData(frame.imageData, -54, -21);
+    if (frame.isChanged) {
+      ctx.putImageData(frame.imageData, -54, -21);
+      ctx.canvas.dataset.paintTime = String(t);
+    }
   } else if (!intro && !rest) {
     lanes.forEach((lane, i) => {
       const page = score.pages.find((p) => p.lane === i && p.enter <= t && t < p.leave) || null;

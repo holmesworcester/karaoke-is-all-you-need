@@ -25,10 +25,14 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
       );
   }
   function solid(asset, clear = false) {
-    return asset.flatMap(([x, y, planes]) =>
+    return asset.flatMap(([x, y, planes, base]) =>
       clear
         ? [tile(6, x, y, 0, 0, Array(12).fill(0))]
-        : planes.map(([bit, ...mask], i) => tile(i === 0 ? 6 : 38, x, y, 0, 1 << bit, mask))
+        : planes.map(([bit, ...mask], i) => {
+            const delta = base === undefined ? 1 << bit : bit;
+            const background = i === 0 ? (base ?? 0) : 0;
+            return tile(i === 0 ? 6 : 38, x, y, background, background ^ delta, mask);
+          })
     );
   }
   const ascii = (s) => s.replace(/[’‘]/g, "'").replace(/[–—]/g, '-');
@@ -111,7 +115,23 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
   at(0.007, packet(1, [0, 0]));
   at(0.01, packet(2, [0]));
   batch(0.014, 0.8, solid(art.header));
-  const introEnd = 2.2;
+  const titleEnd = 2.2;
+  const leadTime = Math.max(3, (4 * 60) / bpm + 0.3);
+  const hasIntroArt = Boolean(art.coverPalette && pages[0].start - leadTime >= titleEnd + 3.7);
+  const introEnd = hasIntroArt ? pages[0].start - leadTime : titleEnd;
+  function artwork(start) {
+    at(start, packet(1, [0, 0]));
+    palette(start + 0.014, art.end, 0);
+    batch(start + 0.03, start + 2.75, solid(art.outro));
+    for (let level = 1; level <= 15; level++)
+      palette(start + 0.29 + level * 0.185, art.end, level / 15);
+  }
+  if (hasIntroArt) {
+    artwork(titleEnd);
+    for (let level = 1; level <= 8; level++)
+      palette(introEnd - 0.52 + level * 0.06, art.end, 1 - level / 8);
+    palette(introEnd + 0.004, art.live);
+  }
   at(introEnd, packet(1, [0, 0]));
   const laneMasks = [new Map(), new Map()];
   const cues = [],
@@ -206,10 +226,7 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
     }
   }
   const end = pages.at(-1).end + 0.82;
-  at(end, packet(1, [0, 0]));
-  palette(end + 0.014, art.end, 0);
-  batch(end + 0.03, end + 2.75, solid(art.outro));
-  for (let level = 1; level <= 15; level++) palette(end + 0.29 + level * 0.185, art.end, level / 15);
+  artwork(end);
   const used = new Uint8Array(count);
   let lag = 0;
   high.sort((a, b) => a.tick - b.tick);
@@ -251,6 +268,7 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
     cues,
     rests,
     introEnd,
+    introArtStart: hasIntroArt ? titleEnd : null,
     maxDelayMs: (lag * 1000) / 300,
     outro: end,
   };

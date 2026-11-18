@@ -33,6 +33,7 @@ node tests/fixture.mjs
 node tests/verify.mjs
 .venv/bin/python tests/align_test.py
 .venv/bin/python tests/roundtrip.py
+.venv/bin/python tests/cover_test.py
 """
 
 [tasks.verify-demo]

@@ -37,6 +37,8 @@ mise run setup
 .venv/bin/python scripts/art.py "Your Song" song/cover.jpg song/assets.json
 ```
 
+To draw the cover in color, pass three artwork-derived hex colors to the art command, for example `--cover-palette 222233 8899aa ffeeee`. These set the stage background, unsung lyrics and sweep. The builder checks contrast after rounding to native CD+G colors. On a long intro, the title gives way to the artwork and then the first lyric preview with a four-beat cue.
+
 Listen through with the vocal, especially repeated lines, echoes and short pickups. The aligner follows the supplied English words and uses LRC line times as soft anchors. Write out sung numbers. `word-scores.json` gives each word’s start, end and mean model probability. Adjust `timing.json` against the vocal before building the final version. This file stores an array per LRC row, with one `[startMs,endMs]` pair per word and an empty array for a timestamped instrumental line.
 
 Save this as `song/song.json`. Paths in a manifest are relative to that file. An optional `pickupRows` array identifies zero-based lyric rows that benefit from a one-beat, three-dot lead-in.
