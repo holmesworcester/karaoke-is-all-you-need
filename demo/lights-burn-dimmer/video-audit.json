@@ -1,0 +1,21 @@
+{
+  "frames": 15833,
+  "videoDuration": "263.883333",
+  "audioDuration": "263.879002",
+  "decodedImageChecks": 49,
+  "activeWordRegions": 30,
+  "maxImageRms": 0.94,
+  "maxGlyphRms": 3.06,
+  "audioWindowOffsetsMs": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "minAudioCorrelation": 0.9965
+}

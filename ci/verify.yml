@@ -1,0 +1,45 @@
+name: Verify karaoke
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 7 * * 1'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: jdx/mise-action@v2
+      - name: Install FFmpeg and select Chrome
+        run: |
+          if ! command -v ffmpeg >/dev/null; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          echo "KARAOKE_CHROME=$(command -v google-chrome)" >> "$GITHUB_ENV"
+      - run: mise run verify
+      - if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: mise run verify-demo
+      - if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: mise run verify-models
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: karaoke-verification
+          path: |
+            artifacts/
+            build/roundtrip/render.mp4
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: karaoke-failure
+          path: |
+            build/video-qc/
+            build/model-test/
+            build/roundtrip/
+          if-no-files-found: ignore

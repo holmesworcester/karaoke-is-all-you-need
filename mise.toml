@@ -1,0 +1,54 @@
+[tools]
+node = "24.13.0"
+
+[tasks.setup]
+description = "Install JavaScript dependencies and check the audio tools"
+run = """
+npm ci --no-audit --no-fund
+ffmpeg -version > /dev/null
+ffprobe -version > /dev/null
+"""
+
+[tasks.browser]
+depends = ["setup"]
+run = 'if [ -z "${KARAOKE_CHROME:-}" ]; then npx --no-install playwright-core install chromium; fi'
+
+[tasks.python]
+description = "Prepare the Python audio and image environment"
+run = """
+python3 -m venv --without-pip .venv
+python3 -m pip --python .venv install --disable-pip-version-check -r requirements.txt
+"""
+
+[tasks.demo]
+depends = ["setup"]
+description = "Build the offline demo player using the reviewed LRCLIB edition"
+run = "node scripts/build-player.mjs demo/lights-burn-dimmer/song.json build/demo.html"
+
+[tasks.verify]
+depends = ["browser", "python"]
+description = "Test timing, seek, glyph coverage, CD+G export and a new song rendered to video"
+run = """
+node tests/fixture.mjs
+node tests/verify.mjs
+.venv/bin/python tests/align_test.py
+.venv/bin/python tests/roundtrip.py
+"""
+
+[tasks.verify-demo]
+depends = ["demo", "browser", "python"]
+description = "Check the live edition and decode the published MP4 against independent browser seeks"
+run = """
+node tests/verify.mjs --live
+node demo/lights-burn-dimmer/analysis/reference.mjs
+.venv/bin/python demo/lights-burn-dimmer/analysis/verify.py demo/lights-burn-dimmer/lights-burn-dimmer.mp4 build/demo.html build/video-qc > artifacts/video.json
+cat artifacts/video.json
+"""
+
+[tasks.verify-models]
+depends = ["python"]
+description = "Fetch checksum-pinned models and align a synthesized vocal entrance"
+run = """
+.venv/bin/python scripts/models.py build/models
+.venv/bin/python tests/models_test.py build/models
+"""

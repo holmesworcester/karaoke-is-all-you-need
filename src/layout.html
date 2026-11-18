@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark"><title>@@TITLE@@ · Karaoke</title>
+<style>
+@font-face{font-family:Stage;src:url(data:font/ttf;base64,@@FONT@@) format("truetype");font-weight:700;font-display:swap}
+:root{--backdrop:#080808;--paper:#999999;--lit:#ffffff;--muted:#aaaaaa}
+*{box-sizing:border-box}html,body{margin:0;background:var(--backdrop);color:var(--paper);font:16px system-ui,sans-serif}
+[hidden]{display:none!important}
+main{position:relative;width:100%;height:100vh;height:100dvh;overflow:hidden;background:var(--backdrop);isolation:isolate}
+main.expanded{position:fixed;inset:0;z-index:5}main:fullscreen{width:100%;height:100%}
+#display{position:absolute;inset:0;overflow:hidden}
+#intro,#rest,#ending,#problem{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+h1,#rest,.lyric{font-family:Stage,"Arial Narrow",sans-serif;font-weight:700}
+h1{font-size:min(12vw,19vh);margin:0;letter-spacing:-.018em;line-height:1}
+#rest{font-size:min(8vw,11vh);color:var(--muted)}
+#ending{background:#000}#screen{display:block;width:min(100vw,100vh);width:min(100vw,100dvh);aspect-ratio:1;image-rendering:pixelated}
+#lanes{position:absolute;inset:5% max(2.5vw,env(safe-area-inset-right)) 7% max(2.5vw,env(safe-area-inset-left));display:grid;grid-template-rows:1fr 1fr;align-items:center;justify-items:stretch}
+.lane{position:relative;text-align:center}
+.lyric{display:block;line-height:1.10;font-size:min(10.5vw,12vh);font-size:min(10.5vw,12dvh);text-wrap:balance;letter-spacing:-.012em}
+.word{position:relative;display:inline-block;white-space:nowrap;color:var(--paper)}
+.word[data-fill="sung"]{color:var(--lit)}
+.word[data-fill="sweep"]{color:transparent}
+.word[data-fill="sweep"]::before,.word[data-fill="sweep"]::after{content:attr(data-text);position:absolute;inset:0;pointer-events:none}
+.word::before{color:var(--paper);clip-path:inset(-1em -1em -1em calc(100% - var(--right)))}
+.word::after{color:var(--lit);clip-path:inset(-1em var(--right) -1em -1em)}
+.cue{position:absolute;bottom:calc(100% + .4em);left:50%;transform:translateX(-50%);display:flex;gap:.38em;font-size:clamp(11px,1.5vmin,20px)}
+.cue i{height:.55em;width:.55em;background:var(--lit);border-radius:50%}
+.controls{position:absolute;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px max(12px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));background:linear-gradient(transparent,#101010e6);transition:opacity .15s}
+main.quiet .controls:not(:focus-within){opacity:0;pointer-events:none}
+main.pointer-mode.quiet .controls{opacity:0;pointer-events:none}
+audio{width:min(630px,62vw);min-width:100px;height:36px}
+button{border:1px solid #5b5b63;border-radius:5px;background:#222;color:#eee;padding:8px 12px;font:600 13px system-ui;cursor:pointer}
+button:focus-visible{outline:2px solid var(--lit)}button:hover{background:#38383f}button:disabled{opacity:.45}
+@media(max-width:530px){.controls{gap:5px;flex-wrap:wrap}.controls audio{width:100%;height:34px}.controls button{padding:5px 8px}}
+@media(prefers-reduced-motion:reduce){.controls{transition:none}}
+</style></head><body><main id="player">
+<section id="display" aria-label="Karaoke screen">
+<div id="intro"><h1>@@TITLE@@</h1></div>
+<div id="lanes" hidden>
+<div class="lane"><div class="cue" aria-hidden="true" hidden></div><div class="lyric"></div></div>
+<div class="lane"><div class="cue" aria-hidden="true" hidden></div><div class="lyric"></div></div>
+</div><div id="rest" hidden>Instrumental</div><div id="ending" hidden><canvas id="screen" width="192" height="174" role="img" aria-label="Single artwork"></canvas></div>
+<div id="problem" role="alert" hidden></div></section>
+<div class="controls"><audio preload="auto" aria-label="Instrumental playback"></audio><button type="button" id="fullscreen">Full screen</button><button type="button" id="save" disabled title="Download the backing MP3 and CD+G graphics">Save MP3+G</button></div>
+</main>
+<script id="sound" type="application/octet-stream">@@AUDIO@@</script>
+<script id="art" type="application/json">@@ART@@</script>
+<script id="song" type="application/json">@@SONG@@</script>
+<script id="timing" type="application/json">@@TIMING@@</script>
+<script id="edition" type="application/json">@@EDITION@@</script>
+<script id="wordhash" type="text/plain">@@HASH@@</script>
+<script>@@PLAYER@@</script>
+<!-- @@LICENSES@@ -->
+</body></html>

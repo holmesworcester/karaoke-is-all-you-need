@@ -1,0 +1,11 @@
+{
+  "title": "Lights Burn Dimmer",
+  "artist": "Fred again.. & Jamie T",
+  "audio": "lights-burn-dimmer.mp4",
+  "lrclibId": 29384656,
+  "lyricsSha256": "4882b0ed24732a57b52ee9e7da1692c6c7059024d3fc2e972755d8a605f62217",
+  "timing": "timing.json",
+  "art": "assets.json",
+  "bpm": 106,
+  "pickupRows": [7, 11, 19, 23, 53]
+}
