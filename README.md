@@ -2,7 +2,9 @@
 
 Build a self-contained karaoke player, a native MP3+G file pair, and a 1080p60 video from one set of word timings. The player uses the audio clock for its white sweep, so pausing, seeking, or changing playback speed keeps the lyrics in place.
 
-**[Watch or download “Lights Burn Dimmer” (MP4, 17 MB)](https://github.com/holmesworcester/karaoke-is-all-you-need/raw/refs/heads/main/demo/lights-burn-dimmer/lights-burn-dimmer.mp4)** · **[Agent skill](.agents/skills/karaoke-is-all-you-need/SKILL.md)**
+**[Agent skill](.agents/skills/karaoke-is-all-you-need/SKILL.md)**
+
+https://github.com/user-attachments/assets/6d8d11cf-5355-4610-8222-eae4f291820e
 
 ## Play the demo
 

@@ -40,6 +40,7 @@ depends = ["demo", "browser", "python"]
 description = "Check the live edition and decode the published MP4 against independent browser seeks"
 run = """
 node tests/verify.mjs --live
+node tests/readme-video.mjs
 node demo/lights-burn-dimmer/analysis/reference.mjs
 .venv/bin/python demo/lights-burn-dimmer/analysis/verify.py demo/lights-burn-dimmer/lights-burn-dimmer.mp4 build/demo.html build/video-qc > artifacts/video.json
 cat artifacts/video.json
