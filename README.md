@@ -1,6 +1,6 @@
 # Karaoke Is All You Need
 
-Build a self-contained karaoke player, a native MP3+G file pair, and a 1080p60 video from one set of word timings. The player uses the audio clock for its white sweep, so pausing, seeking, or changing playback speed keeps the lyrics in place.
+I wondered if Astra could one-shot a karaoke track. It can! It got a working, singable version on the first try and my feedback was just aesthetics. Sharing the results in case helpful to all you vibe-coding KJ's out there.
 
 **[Agent skill](.agents/skills/karaoke-is-all-you-need/SKILL.md)**
 
