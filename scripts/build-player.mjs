@@ -112,6 +112,8 @@ try {
     duration,
     bpm: song.bpm || 120,
     pickupRows: song.pickupRows || [],
+    artworkIntro: song.artworkIntro === true,
+    fadeSeconds: song.fadeSeconds ?? 12,
   };
   compile(words, timing, art, duration, meta); // Verify CD+G tile deadlines before writing a playable file.
   const bundle = await build({

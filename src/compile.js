@@ -1,6 +1,6 @@
 // CD+G runs at 300 packets per second. Reserve the time-critical sweeps first,
 // then fit the independent preview tiles into the free slots ahead of the voice.
-export function compile(words, timing, art, duration, { bpm = 120, pickupRows = [] } = {}) {
+export function compile(words, timing, art, duration, { bpm = 120, pickupRows = [], artworkIntro = false, fadeSeconds = 12 } = {}) {
   const count = Math.ceil(duration * 300),
     data = new Uint8Array(count * 24);
   const high = [],
@@ -111,25 +111,38 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
   }
   const from = (map, op, b) =>
     Array.from(map, ([k, mask]) => tile(op, k % 50, Math.floor(k / 50), 0, b, mask));
-  palette(0, art.live);
-  at(0.007, packet(1, [0, 0]));
-  at(0.01, packet(2, [0]));
-  batch(0.014, 0.8, solid(art.header));
-  const titleEnd = 2.2;
+  if (!Number.isFinite(fadeSeconds) || fadeSeconds <= 0) throw Error('Invalid artwork fade duration');
   const leadTime = Math.max(3, (4 * 60) / bpm + 0.3);
-  const hasIntroArt = Boolean(art.coverPalette && pages[0].start - leadTime >= titleEnd + 3.7);
-  const introEnd = hasIntroArt ? pages[0].start - leadTime : titleEnd;
-  function artwork(start) {
+  const introArtStart = artworkIntro ? 0 : 2.2;
+  const available = pages[0].start - leadTime - introArtStart;
+  const hasIntroArt = Boolean((art.coverPalette || artworkIntro) && available >= 3.7);
+  const introEnd = hasIntroArt ? pages[0].start - leadTime : artworkIntro ? 0 : 2.2;
+  if (!artworkIntro) {
+    palette(0, art.live);
+    at(0.007, packet(1, [0, 0]));
+    at(0.01, packet(2, [0]));
+    batch(0.014, 0.8, solid(art.header));
+  } else if (!hasIntroArt) {
+    palette(0, art.live);
+  }
+  function artwork(start, window) {
+    const fade = Math.min(fadeSeconds, window);
+    const packets = solid(art.outro);
     at(start, packet(1, [0, 0]));
     palette(start + 0.014, art.end, 0);
-    batch(start + 0.03, start + 2.75, solid(art.outro));
-    for (let level = 1; level <= 15; level++)
-      palette(start + 0.29 + level * 0.185, art.end, level / 15);
+    // Spread the native tile updates over the reveal as well as changing the palette.
+    const spacing = Math.max(1 / 285, (fade * 0.80 - 0.08) / packets.length);
+    for (let n = 0; n < packets.length; n += 20) {
+      const slice = packets.slice(n, n + 20);
+      batch(start + 0.03 + n * spacing, start + 0.14 + (n + slice.length) * spacing, slice);
+    }
+    for (let level = 1; level <= 15; level++) palette(start + (level / 15) * fade, art.end, level / 15);
   }
   if (hasIntroArt) {
-    artwork(titleEnd);
+    const exit = Math.min(1.6, available * 0.14);
+    artwork(introArtStart, available - exit - Math.min(0.8, available * 0.09));
     for (let level = 1; level <= 8; level++)
-      palette(introEnd - 0.52 + level * 0.06, art.end, 1 - level / 8);
+      palette(introEnd - exit + (level / 8) * (exit - 0.025), art.end, 1 - level / 8);
     palette(introEnd + 0.004, art.live);
   }
   at(introEnd, packet(1, [0, 0]));
@@ -226,7 +239,7 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
     }
   }
   const end = pages.at(-1).end + 0.82;
-  artwork(end);
+  artwork(end, Math.max(0.2, duration - end - 0.6));
   const used = new Uint8Array(count);
   let lag = 0;
   high.sort((a, b) => a.tick - b.tick);
@@ -268,7 +281,7 @@ export function compile(words, timing, art, duration, { bpm = 120, pickupRows = 
     cues,
     rests,
     introEnd,
-    introArtStart: hasIntroArt ? titleEnd : null,
+    introArtStart: hasIntroArt ? introArtStart : null,
     maxDelayMs: (lag * 1000) / 300,
     outro: end,
   };
