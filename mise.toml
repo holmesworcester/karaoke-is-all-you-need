@@ -37,6 +37,7 @@ node tests/audio-comparison.mjs
 .venv/bin/python tests/releases_test.py
 .venv/bin/python tests/roundtrip.py
 .venv/bin/python tests/cover_test.py
+.venv/bin/python tests/sweep_test.py
 """
 
 [tasks.verify-demo]
