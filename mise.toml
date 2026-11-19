@@ -31,6 +31,7 @@ description = "Test timing, seek, glyph coverage, CD+G export and a new song ren
 run = """
 node tests/fixture.mjs
 node tests/verify.mjs
+node tests/pages-video.mjs
 .venv/bin/python tests/align_test.py
 .venv/bin/python tests/releases_test.py
 .venv/bin/python tests/roundtrip.py
