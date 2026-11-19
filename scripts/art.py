@@ -40,6 +40,7 @@ if args.cover_palette:
     if any(len(c) != 3 for c in colors):
         parser.error("Each palette color requires six hex digits")
     colors = [[round(c / 17) * 17 for c in rgb] for rgb in colors]
+    colors[1:] = sorted(colors[1:], key=luminance)
     bg, ink, sweep = colors
     if min(contrast(bg, ink), contrast(bg, sweep)) < 4.5 or contrast(ink, sweep) < 2:
         parser.error(

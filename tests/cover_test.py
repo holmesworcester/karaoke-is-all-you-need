@@ -28,11 +28,14 @@ invalid = subprocess.run(
     [*art_command, "#222222", "#333333", "#444444"], capture_output=True
 )
 assert invalid.returncode and b"contrast" in invalid.stderr
-subprocess.run([*art_command, *colors], check=True)
+subprocess.run([*art_command, colors[0], colors[2], colors[1]], check=True)
 art = json.loads((folder / "art.json").read_text())
 assert art["atlas"]["é"] != art["atlas"]["e"]
 assert art["atlas"]["œ"] != art["atlas"]["?"]
 assert art["live"][:3] == [c[1:] for c in colors]
+# Simulate a legacy album palette and run it through the regular player/export path.
+art["live"][1], art["live"][2] = art["live"][2], art["live"][1]
+(folder / "art.json").write_text(json.dumps(art))
 (folder / "words.lrc").write_text("[00:11.00] Été\n")
 (folder / "timing.json").write_text("[[[11000,12000]]]")
 (folder / "song.json").write_text(

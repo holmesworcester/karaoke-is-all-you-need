@@ -43,6 +43,18 @@ if (song.lyricsSha256 && song.lyricsSha256 !== hash)
   throw Error('Lyrics edition differs from the reviewed alignment');
 const timing = JSON.parse(await fs.readFile(local(song.timing), 'utf8'));
 const art = JSON.parse(await fs.readFile(local(song.art), 'utf8'));
+// Older artwork may assign the darker of the two lyric colors to the sweep.
+const luminance = (hex) => {
+  const channels = hex.match(/../g).map((v) => parseInt(v, 16) / 255);
+  const linear = channels.map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+};
+if (luminance(art.live[1]) > luminance(art.live[2])) {
+  const [waiting, sung] = art.live.slice(1, 3);
+  art.live = art.live.map((color, index) =>
+    index === 2 ? waiting : index === 1 || ([4, 5].includes(index) && color === waiting) ? sung : color
+  );
+}
 let last = 0;
 if (words.length !== timing.length || !words.some((r) => r.length))
   throw Error('Lyrics/timing row mismatch or empty song');
