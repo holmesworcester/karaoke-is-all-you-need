@@ -34,3 +34,27 @@ for good in [True, False]:
     first, last = check(movie, reference, "on", .70, 1.85, lane="Lead", fonts=root / "assets")
     assert (last - first > .37) == good, (movie, first, last)
 print("Decoded overlapping lanes distinguish a held final word from a three-centisecond cue.")
+
+# A half-length lyric can pass the two-point test even though it releases early.
+path.write_text(script.replace(r"{\kf115}on", r"{\kf48}on"))
+early_movie = work / "early-release.mp4"
+subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i",
+                "color=s=480x240:r=25:d=2.5", "-vf", f"ass=draw.ass:fontsdir={root / 'assets'}",
+                "-c:v", "libx264", "-threads", "2", early_movie], cwd=work, check=True)
+for path, expected in [(work / "held.mp4", 0), (early_movie, 1)]:
+    result = subprocess.run([sys.executable, root / "scripts/check_sweep.py", path, reference, "on",
+                             ".70", "1.85", "--lane", "Lead", "--fonts", root / "assets", "--held"],
+                            capture_output=True, text=True)
+    assert result.returncode == expected, (path, result.stdout, result.stderr)
+
+# Highlight the second identical printed word. A mask covering both words would count
+# the completed first word in every frame and would start around half full.
+repeat = work / "repeat.ass"
+repeat.write_text(script.replace(r"{\pos(240,105)\kf70}Hold {\kf115}on",
+                                 r"{\pos(240,105)\kf70}on {\kf115}on"))
+repeat_movie = work / "repeat.mp4"
+subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-y", "-f", "lavfi", "-i",
+                "color=s=480x240:r=25:d=2.5", "-vf", f"ass=repeat.ass:fontsdir={root / 'assets'}",
+                "-c:v", "libx264", "-threads", "2", repeat_movie], cwd=work, check=True)
+first, last = check(repeat_movie, repeat, "on", .70, 1.85, lane="Lead", fonts=root / "assets", occurrence=2)
+assert first < .35 and last > .75, (first, last)

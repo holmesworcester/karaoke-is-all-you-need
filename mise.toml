@@ -33,11 +33,13 @@ node tests/fixture.mjs
 node tests/verify.mjs
 node tests/pages-video.mjs
 node tests/audio-comparison.mjs
+node tests/lyric-overlay.mjs
 .venv/bin/python tests/align_test.py
 .venv/bin/python tests/releases_test.py
 .venv/bin/python tests/roundtrip.py
 .venv/bin/python tests/cover_test.py
 .venv/bin/python tests/sweep_test.py
+.venv/bin/python tests/omissions_test.py
 """
 
 [tasks.verify-demo]

@@ -14,7 +14,7 @@ def seconds(ass_time):
     return int(hours) * 3600 + int(minutes) * 60 + float(rest)
 
 
-def mask_dialogue(script, word, moment, lane):
+def mask_dialogue(script, word, moment, lane, occurrence=None):
     lines = script.splitlines()
     header = []
     matches = []
@@ -26,13 +26,18 @@ def mask_dialogue(script, word, moment, lane):
         if not seconds(fields[1]) <= moment < seconds(fields[2]) or (lane and fields[4] != lane):
             continue
         parts = re.split(r"(\{[^}]*\})", fields[9])
-        if sum(text.strip() == word for text in parts) != 1:
+        locations = [index for index, text in enumerate(parts) if text.strip() == word]
+        if occurrence is None and len(locations) != 1:
             continue
+        index = 1 if occurrence is None else occurrence
+        if not 1 <= index <= len(locations):
+            continue
+        target = locations[index - 1]
         masked = []
-        for text in parts:
+        for part_index, text in enumerate(parts):
             if text.startswith("{") or not text:
                 masked.append(text)
-            elif text.strip() == word:
+            elif part_index == target:
                 masked.append(r"{\alpha&H00&\1c&HFFFFFF&\2c&HFFFFFF&\bord0\shad0}" + text)
             else:
                 masked.append(r"{\alpha&HFF&}" + text)
@@ -50,7 +55,7 @@ def gray_frame(arguments, width, height, cwd=None):
     return np.frombuffer(raw, np.uint8).reshape(height, width)
 
 
-def check(movie, subtitles, word, start, end, *, lane=None, fonts=None, clock_offset=0, threshold=200):
+def check(movie, subtitles, word, start, end, *, lane=None, fonts=None, clock_offset=0, threshold=200, positions=(0.12, 0.86), occurrence=None):
     if end <= start or start < clock_offset:
         raise ValueError("The word needs a positive interval on the video clock")
     probe = subprocess.check_output([
@@ -62,7 +67,7 @@ def check(movie, subtitles, word, start, end, *, lane=None, fonts=None, clock_of
     middle = (start + end) / 2
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
-        (root / "mask.ass").write_text(mask_dialogue(subtitles.read_text(), word, middle, lane))
+        (root / "mask.ass").write_text(mask_dialogue(subtitles.read_text(), word, middle, lane, occurrence))
         style = "ass=mask.ass"
         if fonts:
             (root / "fonts").symlink_to(fonts.resolve(), target_is_directory=True)
@@ -74,7 +79,7 @@ def check(movie, subtitles, word, start, end, *, lane=None, fonts=None, clock_of
     if mask.sum() < 16:
         raise ValueError("Too few solid glyph pixels to measure")
     coverage = []
-    for position in (0.12, 0.86):
+    for position in positions:
         time = start + position * (end - start) - clock_offset
         pixels = gray_frame(["-ss", f"{time:.6f}", "-i", movie, "-map", "0:v:0"], width, height)
         coverage.append(round(float(np.mean(pixels[mask] > threshold)), 3))
@@ -89,11 +94,18 @@ if __name__ == "__main__":
     parser.add_argument("start", type=float, help="Word start in seconds on the subtitle clock")
     parser.add_argument("end", type=float)
     parser.add_argument("--lane", help="ASS Name field for simultaneous voices")
+    parser.add_argument("--occurrence", type=int, help="One-based occurrence of the word within the selected line")
     parser.add_argument("--fonts", type=Path)
     parser.add_argument("--clock-offset", type=float, default=0, help="Subtitle clock at video time zero")
     parser.add_argument("--threshold", type=int, default=200, help="Brightness between unsung and sung colors")
-    options = parser.parse_args()
-    coverage = check(**vars(options))
-    print(json.dumps({"early": coverage[0], "late": coverage[1]}))
-    if coverage[1] - coverage[0] <= 0.37:
+    parser.add_argument("--held", action="store_true", help="Also require the highlight to advance after the middle of a sustained note")
+    arguments = vars(parser.parse_args())
+    held = arguments.pop("held")
+    positions = (0.12, 0.50, 0.90) if held else (0.12, 0.86)
+    coverage = check(**arguments, positions=positions)
+    labels = ("early", "middle", "late") if held else ("early", "late")
+    print(json.dumps(dict(zip(labels, coverage, strict=True))))
+    if held and coverage[-1] - coverage[1] <= 0.08:
+        raise SystemExit("The highlight had already finished by the middle of the held word")
+    if coverage[-1] - coverage[0] <= 0.37:
         raise SystemExit("The exported word did not brighten through its interval")
