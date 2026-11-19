@@ -130,7 +130,15 @@ try {
   )
     .join('\n\n')
     .replaceAll('--', '—');
+  let comparison = '';
+  if (song.originalAudio) {
+    const packed = path.join(tmp, 'comparison.m4a');
+    execFileSync('python3', [path.join(root, 'scripts/comparison.py'), input, local(song.originalAudio),
+      packed, '--offset', String(song.originalOffsetSeconds || 0)]);
+    comparison = (await fs.readFile(packed)).toString('base64');
+  }
   const values = {
+    COMPARISON: comparison,
     TITLE: escape(song.title),
     FONT: (await fs.readFile(path.join(root, 'assets/BarlowCondensed-Bold.ttf'))).toString('base64'),
     AUDIO: (await fs.readFile(mp3)).toString('base64'),

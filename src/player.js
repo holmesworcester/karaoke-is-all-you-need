@@ -1,5 +1,6 @@
 import CDGraphics from 'cdgraphics';
 import { zipSync } from 'fflate';
+import { attachAudioComparison } from './audio-comparison.js';
 import { compile } from './compile.js';
 
 const $ = (s) => document.querySelector(s);
@@ -23,7 +24,14 @@ if (art.fullBleed) {
 if (song.artworkIntro) $('#intro').hidden = true;
 const base = [song.artist, song.title].filter(Boolean).join(' - ') + ' (Karaoke)';
 const bytes = Uint8Array.from(atob($('#sound').textContent.trim()), (c) => c.charCodeAt(0));
-audio.src = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+const comparison = $('#comparison').textContent.trim();
+if (comparison && (window.AudioContext || window.webkitAudioContext)) {
+  const encoded = Uint8Array.from(atob(comparison), c => c.charCodeAt(0));
+  audio.src = URL.createObjectURL(new Blob([encoded], { type: 'audio/mp4' }));
+  attachAudioComparison(audio, $('#audio-mode'));
+} else {
+  audio.src = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
+}
 const lanes = [...document.querySelectorAll('.lane')].map((el) => ({
   text: el.querySelector('.lyric'),
   dots: el.querySelector('.cue'),

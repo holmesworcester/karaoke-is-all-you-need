@@ -25,6 +25,8 @@ node video/export.mjs build/demo.html build/karaoke.mp4
 
 Export draws each frame at its presentation time, including the closing fade. Use `--jobs 1` for lower peak memory, or `--audio master.wav` to mux a sample-aligned master of the same length. The checked-in video was mastered from the original separation.
 
+To compare the backing with the recorded vocals, set `originalAudio` in the song manifest to the matching recording. The HTML player adds an **Audio** switch and keeps the same word sweep, position, playback rate and stereo image in both modes. If the recording has extra audio at the beginning, set `originalOffsetSeconds` to the number of seconds to trim. Negative values delay the original. Check the two clocks at the beginning, middle and end before building.
+
 ## Make another song
 
 For a new recording, install Python 3.14 with pip, then run `mise run python`. The model downloader verifies each file by SHA-256. It downloads about 425 MB on the first run. The following example assumes a working folder named `song` containing a studio recording, cover image and line-timed LRC transcript of the same edition.

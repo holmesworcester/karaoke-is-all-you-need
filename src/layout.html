@@ -42,9 +42,10 @@ button:focus-visible{outline:2px solid var(--lit)}button:hover{background:#38383
 <div class="lane"><div class="cue" aria-hidden="true" hidden></div><div class="lyric"></div></div>
 </div><div id="rest" hidden>Instrumental</div><div id="ending" hidden><canvas id="screen" width="192" height="174" role="img" aria-label="Single artwork"></canvas></div>
 <div id="problem" role="alert" hidden></div></section>
-<div class="controls"><audio preload="auto" aria-label="Instrumental playback"></audio><button type="button" id="fullscreen">Full screen</button><button type="button" id="save" disabled title="Download the backing MP3 and CD+G graphics">Save MP3+G</button></div>
+<div class="controls"><audio preload="auto" aria-label="Instrumental playback"></audio><button type="button" id="audio-mode" hidden></button><button type="button" id="fullscreen">Full screen</button><button type="button" id="save" disabled title="Download the backing MP3 and CD+G graphics">Save MP3+G</button></div>
 </main>
 <script id="sound" type="application/octet-stream">@@AUDIO@@</script>
+<script id="comparison" type="application/octet-stream">@@COMPARISON@@</script>
 <script id="art" type="application/json">@@ART@@</script>
 <script id="song" type="application/json">@@SONG@@</script>
 <script id="timing" type="application/json">@@TIMING@@</script>
