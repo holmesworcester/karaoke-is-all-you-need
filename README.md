@@ -41,6 +41,8 @@ To draw the cover in color, pass three artwork-derived hex colors to the art com
 
 Listen through with the vocal, especially repeated lines, echoes and short pickups. The aligner follows the supplied English words and uses LRC line times as soft anchors. Write out sung numbers. `word-scores.json` gives each word’s start, end and mean model probability. Adjust `timing.json` against the vocal before building the final version. This file stores an array per LRC row, with one `[startMs,endMs]` pair per word and an empty array for a timestamped instrumental line.
 
+For sung holds, run `.venv/bin/python scripts/refine_releases.py song/clean-vocal.wav song/timing.json song/releases.json --output song/proposed.json`. The tool follows groups of spectral peaks across small pitch changes on a 10 ms clock, stops at a sustained level drop, and never crosses the following word. The report gives estimates from several nearby seed frames and three decay thresholds. The optional output applies changes where the estimates agree and exhibit a release before the next cue. Compare candidates against the vocal, especially when other singers overlap, a consonant trails the note, or the singer takes a breath. Acoustic overlap can leave a release uncertain. Word starts are preserved.
+
 Save this as `song/song.json`. Paths in a manifest are relative to that file. An optional `pickupRows` array identifies zero-based lyric rows that benefit from a one-beat, three-dot lead-in.
 
 ```json
