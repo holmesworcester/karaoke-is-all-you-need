@@ -15,6 +15,12 @@ if (art.coverPalette) {
   for (const [index, name] of ['backdrop', 'paper', 'lit', '', 'muted'].entries())
     if (name) document.documentElement.style.setProperty('--' + name, '#' + art.live[index]);
 }
+if (art.fullBleed) {
+  ctx.canvas.width = 288;
+  ctx.canvas.height = 192;
+  ctx.canvas.classList.add('bleed');
+}
+if (song.artworkIntro) $('#intro').hidden = true;
 const base = [song.artist, song.title].filter(Boolean).join(' - ') + ' (Karaoke)';
 const bytes = Uint8Array.from(atob($('#sound').textContent.trim()), (c) => c.charCodeAt(0));
 audio.src = URL.createObjectURL(new Blob([bytes], { type: 'audio/mpeg' }));
@@ -81,7 +87,7 @@ function show() {
   if (cover) {
     const frame = cdg.render(t);
     if (frame.isChanged) {
-      ctx.putImageData(frame.imageData, -54, -21);
+      ctx.putImageData(frame.imageData, art.fullBleed ? -6 : -54, art.fullBleed ? -12 : -21);
       ctx.canvas.dataset.paintTime = String(t);
     }
   } else if (!intro && !rest) {

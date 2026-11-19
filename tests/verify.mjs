@@ -250,7 +250,7 @@ try {
       a.playbackRate = r;
       await a.play();
     }, rate);
-    await p.waitForTimeout(300);
+    await p.waitForFunction((r) => document.querySelector('audio').currentTime > 32.2 + 0.18 * r, rate, { timeout: 4000 });
     const pos = await p.locator('audio').evaluate((a) => {
       a.pause();
       return a.currentTime;
@@ -326,7 +326,7 @@ try {
   }
   check('The native graphics leave the former singer-arrow column empty');
   const luminance = [];
-  for (const t of [257.3, 258.4, 259.5, 260.75, 262.6]) {
+  for (const t of [257.3, 258.4, 260.15, duration - 0.45, duration - 0.12]) {
     await seek(t);
     await assertFrame();
     luminance.push(

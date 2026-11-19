@@ -1,7 +1,7 @@
 import argparse, json
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 parser = argparse.ArgumentParser(
     description="Make a 16-color CD+G title, font atlas and artwork fade"
@@ -15,6 +15,7 @@ parser.add_argument(
     metavar=("BACKGROUND", "LYRIC", "SWEEP"),
     help="Use a color cover and three hex lyric colors sampled from its artwork",
 )
+parser.add_argument("--framed", action="store_true", help="Keep the complete square artwork centered with margins")
 args = parser.parse_args()
 
 
@@ -145,10 +146,11 @@ if args.cover_palette:
 
 bayer = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]])
 # The native end card must fit in the available 300-packet/s prefetch window.
-width, height = 192, 174
+width, height = (192, 174) if args.framed else (W, H)
 while True:
     card = Image.new("L", (W, H))
-    art = source.resize((width, height), Image.Resampling.LANCZOS)
+    art = (source.resize((width, height), Image.Resampling.LANCZOS) if args.framed
+           else ImageOps.fit(source, (W, H), method=Image.Resampling.LANCZOS))
     if args.cover_palette:
         pixels = np.asarray(
             art.quantize(palette=swatches, dither=Image.Dither.FLOYDSTEINBERG)
@@ -162,9 +164,41 @@ while True:
             .clip(0, 13)
             .astype("uint8")
         )
+    if not args.framed:
+        # Fit every native tile into the shortest reveal. Keep extra palette
+        # detail in the tiles where a two-color approximation loses most.
+        rgb = np.array(table, dtype=float).reshape(16, 3) if args.cover_palette else np.repeat((np.arange(16) * 17.)[:, None], 3, axis=1)
+        pixels = pixels.copy()
+        budget = 790
+        candidates = []
+        used = 0
+        for y in range(0, H, 12):
+            for x in range(0, W, 6):
+                tile = pixels[y:y+12, x:x+6]
+                original = tile.copy()
+                values, counts = np.unique(original, return_counts=True)
+                if len(values) == 1:
+                    used += int(values[0] != 0)
+                    continue
+                used += 1
+                if len(values) <= 2:
+                    continue
+                # Test pairs from the actual tile palette, weighted by pixel population.
+                pair = np.array([(a,b) for t,a in enumerate(values) for b in values[t+1:]])
+                distance = np.sum((rgb[values, None, None] - rgb[pair][None])**2, axis=3)
+                loss = np.min(distance, axis=2).T @ counts
+                best = int(np.argmin(loss))
+                tile[:] = pair[best][np.argmin(distance[:, best],axis=1)][np.searchsorted(values,original)]
+                extra = len(color_planes(original)[0]) - 1
+                if extra:
+                    candidates.append((float(loss[best]) / extra, y, x, original, extra))
+        for _, y, x, original, extra in sorted(candidates, key=lambda c: -c[0]):
+            if used + extra <= budget:
+                pixels[y:y+12, x:x+6] = original
+                used += extra
     card.paste(Image.fromarray(pixels), ((W - width) // 2, (H - height) // 2))
-    outro = tiles(card, True, color=bool(args.cover_palette))
-    if sum(len(planes) for _, _, planes, *_ in outro) <= 760:
+    outro = tiles(card, True, color=bool(args.cover_palette) or not args.framed)
+    if not args.framed or sum(len(planes) for _, _, planes, *_ in outro) <= 760:
         break
     width, height = round(width * 0.9), round(height * 0.9)
 rest = Image.new("L", (W, H))
@@ -181,6 +215,8 @@ if args.cover_palette:
 asset = dict(
     atlas=atlas, header=tiles(header), outro=outro, rest=tiles(rest), live=live, end=end
 )
+if not args.framed:
+    asset["fullBleed"] = True
 if args.cover_palette:
     asset["coverPalette"] = True
 json.dump(asset, open(args.output, "w"), separators=(",", ":"))

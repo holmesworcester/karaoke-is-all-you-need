@@ -22,6 +22,7 @@ art_command = [
     "Été",
     folder / "cover.png",
     folder / "art.json",
+    "--framed",
     "--cover-palette",
 ]
 invalid = subprocess.run(
@@ -104,7 +105,7 @@ def frame(t):
     return np.asarray(Image.open(io.BytesIO(png)).convert("RGB")).astype(float)
 
 
-cover = frame(6)
+cover = frame(6.85)
 end = frame(16.4)
 for y, x, rgb in [
     (540, 750, [187, 51, 17]),
@@ -114,7 +115,7 @@ for y, x, rgb in [
     assert max(abs(cover[y, x] - rgb)) < 7, (cover[y, x], rgb)
     assert max(abs(cover[y, x] - end[y, x])) < 7
 assert frame(3.1)[540, 750, 0] < cover[540, 750, 0] - 55
-assert frame(7.85)[540, 750, 0] < cover[540, 750, 0] - 70
+assert frame(7.90)[540, 750, 0] < cover[540, 750, 0] - 65
 waiting, partial, sung = (frame(t) for t in [10.8, 11.5, 12.04])
 assert max(abs(waiting[0, 0] - [17, 34, 51])) < 6
 foreground = np.max(abs(waiting - [153, 170, 187]), axis=2) < 7
@@ -128,3 +129,17 @@ assert max(abs(np.median(sung[foreground], axis=0) - [255, 238, 204])) < 5
 print(
     "Verified the cover fade at both ends, native cover colors, and the accented lyric sweep."
 )
+
+# An album cover with its own title starts the first frame on the cover.
+# Check its long native fade at multiple levels before the first lyric.
+manifest = json.loads((folder / "song.json").read_text())
+manifest.update(artworkIntro=True, fadeSeconds=15)
+(folder / "song.json").write_text(json.dumps(manifest))
+subprocess.run(["node", "scripts/build-player.mjs", folder/"song.json", folder/"cover-intro.html"], check=True)
+subprocess.run(["node", "tests/artwork-intro.mjs", folder/"cover-intro.html"], check=True)
+
+# Exercise the full-bleed path with the same cover and word timing.
+wide_command = [arg for arg in art_command if arg != "--framed"]
+subprocess.run([*wide_command, *colors], check=True)
+subprocess.run(["node", "scripts/build-player.mjs", folder/"song.json", folder/"wide.html"], check=True)
+subprocess.run(["node", "tests/artwork-intro.mjs", folder/"wide.html", "--wide"], check=True)

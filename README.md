@@ -62,7 +62,7 @@ node scripts/build-player.mjs song/song.json build/my-song.html
 node video/export.mjs build/my-song.html build/my-song.mp4
 ```
 
-The CD+G compiler checks packet deadlines against the backing duration. This arrangement uses a 2.2-second title and needs roughly four seconds after the final word for the artwork fade. For a recording that starts on the first beat, add matching pre-roll to the audio and lyric anchors before alignment. For a tight ending, append silence to the backing. For an LRCLIB edition, use `lrclibId` in place of `lyrics`; an optional `lyricsSha256` pins the tokenized text. An exact local edition can also be supplied as the build command’s third argument.
+The CD+G compiler checks packet deadlines against the backing duration. The opening title lasts 2.2 seconds. Set `artworkIntro` to `true` for a cover that supplies its own title. The tile reveal and palette ramp use up to `fadeSeconds` seconds (12 by default), adapting to the first pickup and the remaining backing. New artwork fills the screen. Pass `--framed` to `scripts/art.py` to preserve a square cover and its lettering. For a recording that starts on the first beat, add matching pre-roll to the audio and lyric anchors before alignment. For a tight ending, append silence to the backing. For an LRCLIB edition, use `lrclibId` in place of `lyrics`; an optional `lyricsSha256` pins the tokenized text. An exact local edition can also be supplied as the build command’s third argument.
 
 ## How “Lights Burn Dimmer” was timed
 
