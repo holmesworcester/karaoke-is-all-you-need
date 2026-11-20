@@ -13,7 +13,7 @@ execFileSync('ffmpeg', [
   '-f',
   'lavfi',
   '-i',
-  'color=black:s=640x360:r=12:d=6',
+  'color=black:s=640x360:r=12:d=16',
   '-c:v',
   'libx264',
   '-pix_fmt',
@@ -38,6 +38,10 @@ await writeFile(
   path.join(dir, 'index.html'),
   `<style>${style}body{margin:0}.lyric-stage{width:640px}</style><div class="lyric-stage"><video src="picture.mp4" preload="auto"></video></div><div class="lyric-controls"></div><script type=module>${script}
 window.ui=mountLyrics({video:document.querySelector('video'),stage:document.querySelector('.lyric-stage'),controls:document.querySelector('.lyric-controls'),rows:${JSON.stringify(rows)}});
+window.replaceScore=(rows)=>{
+  window.ui.destroy();
+  window.ui=mountLyrics({video:document.querySelector('video'),stage:document.querySelector('.lyric-stage'),controls:document.querySelector('.lyric-controls'),rows,initial:{position:'center',script:'roman'}});
+};
 window.billLetters=billLetters;</script>`,
 );
 const browser = await launch();
@@ -92,8 +96,58 @@ try {
   assert.equal((await metric()).lit, 0);
   await seek(5.8);
   assert.equal(await page.locator('.lyric-reading').textContent(), '');
+  const phrase = (text, at, start, end, until) => ({
+    words: [[start, end, text]], lane: 558, at, until,
+  });
+  // These source rows share a lane just like a sequence of chopped responses. Later the
+  // lead sustains through two replies and a brief third voice.
+  const score = [
+    phrase('Opening', 700, 1200, 1700, 1750),
+    phrase('Reply', 1950, 2200, 2850, 2870),
+    phrase('again', 2800, 3100, 4250, 4280),
+    phrase('YES', 4100, 4400, 4950, 5050),
+    phrase('Sustain', 10000, 10300, 12400, 12480),
+    phrase('Echo', 10400, 10600, 11500, 11580),
+    phrase('Third', 10650, 10850, 11200, 11280),
+    phrase('Reprise', 11500, 11700, 12700, 12780),
+  ];
+  await page.evaluate((rows) => window.replaceScore(rows), score);
+  // Capture what canvas actually draws, including the baseline passed to the font renderer.
+  async function drawn(time) {
+    await seek(time);
+    return page.evaluate(() => {
+      const c = document.querySelector('canvas').getContext('2d');
+      const stroke = c.strokeText;
+      const lines = {};
+      c.strokeText = function (text, x, y) {
+        lines[text] = y;
+        return stroke.call(this, text, x, y);
+      };
+      try { window.ui.draw(); } finally { c.strokeText = stroke; }
+      return lines;
+    });
+  }
+  const { Opening: top } = await drawn(0.8);
+  const { Reply: bottom } = await drawn(1.4);
+  assert(top < bottom && bottom - top >= 110);
+  assert.deepEqual(await drawn(1.2), { Opening: top, Reply: bottom });
+  assert.deepEqual(await drawn(2.199), { Opening: top, Reply: bottom });
+  assert.deepEqual(await drawn(2.2), { again: top, Reply: bottom });
+  assert.deepEqual(await drawn(3.1), { again: top, YES: bottom });
+  assert.deepEqual(await drawn(4.41), { YES: bottom });
+  assert.deepEqual(await drawn(8), {});
+  assert.deepEqual(await drawn(10.1), { Sustain: top });
+  assert.deepEqual(await drawn(10.7), { Sustain: top, Echo: bottom });
+  const trio = await drawn(10.9);
+  assert.equal(trio.Sustain, top);
+  assert.equal(trio.Echo, bottom);
+  assert(trio.Third < top);
+  assert.deepEqual(await drawn(11.35), { Sustain: top, Echo: bottom });
+  assert.deepEqual(await drawn(11.52), { Sustain: top, Reprise: bottom });
+  assert.deepEqual(await drawn(12.6), { Reprise: bottom });
+  assert.deepEqual(await drawn(2.2), { again: top, Reply: bottom });
   console.log(
-    'Checked RTL glyph sweep, all three placements, held endings, palette selection, and bill lettering.',
+    'Checked RTL glyph sweep, all three placements, held endings, palette selection, bill lettering, and fixed two-line handoffs through rests, overlaps, and backward seeks.',
   );
 } finally {
   await browser.close();

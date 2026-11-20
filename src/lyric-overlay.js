@@ -28,6 +28,66 @@ export function billLetters(text) {
   return text.toLocaleUpperCase('en').replace(/[YOSIE]/g, (c) => substitutions[c]);
 }
 
+// Plan line changes on the singing clock so a seek produces the same two rows as playback.
+function centerPages(rows) {
+  const lyrics = rows.filter((row) => row.words?.length).sort((a, b) => a.words[0][0] - b.words[0][0]);
+  const pages = rows.filter((row) => row.title);
+  let slots = [];
+  let preferred = 0;
+  let previous;
+  let phraseEnd = -Infinity;
+  let slotCount = 2;
+  for (const row of lyrics) {
+    const start = row.words[0][0];
+    const end = Math.min(row.until, row.words.at(-1)[1]);
+    if (start - phraseEnd > 4000) {
+      slots = [];
+      preferred = 0;
+      previous = undefined;
+    }
+    const free = (i) => !slots[i] || slots[i].end <= start;
+    let slot = preferred;
+    if (!free(slot)) slot = 1 - slot;
+    if (!free(slot)) {
+      // A third simultaneous voice gets its own baseline outside the two main rows.
+      slot = 2;
+      while (!free(slot)) slot++;
+    }
+    const old = slots[slot];
+    const previousStart = previous ? previous.words[0][0] : row.at;
+    const at = slot < 2 ? Math.max(previousStart, old?.end ?? -Infinity) : start;
+    const page = { ...row, at, until: slot < 2 ? row.until : end, slot };
+    // Refill on the other line's first word. A held word owns its slot until release.
+    if (old && slot < 2) old.page.until = at;
+    if (previous && previous.slot < 2 && previous.slot !== slot) {
+      previous.until = Math.max(previous.until, start);
+    }
+    pages.push(page);
+    slots[slot] = { page, end };
+    if (slot < 2) preferred = 1 - slot;
+    slotCount = Math.max(slotCount, slot + 1);
+    previous = page;
+    phraseEnd = Math.max(phraseEnd, end);
+  }
+  return { pages, spacing: Math.min(128, 660 / (2 * Math.ceil(slotCount / 2))) };
+}
+
+function visibleAt(rows) {
+  const ordered = [...rows].sort((a, b) => a.at - b.at);
+  const longest = ordered.reduce((max, r) => Math.max(max, r.until - r.at), 0);
+  function upperBound(t) {
+    let l = 0;
+    let r = ordered.length;
+    while (l < r) {
+      const m = (l + r) >> 1;
+      if (ordered[m].at <= t) l = m + 1;
+      else r = m;
+    }
+    return l;
+  }
+  return (t) => ordered.slice(upperBound(t - longest), upperBound(t)).filter((r) => r.until > t);
+}
+
 export function mountLyrics({
   video,
   stage,
@@ -109,18 +169,9 @@ export function mountLyrics({
   }
   let currentWords = '',
     keyFrame;
-  const ordered = [...rows].sort((a, b) => a.at - b.at);
-  const longest = Math.max(0, ...ordered.map((r) => r.until - r.at));
-  function upperBound(t) {
-    let l = 0,
-      r = ordered.length;
-    while (l < r) {
-      const m = (l + r) >> 1;
-      if (ordered[m].at <= t) l = m + 1;
-      else r = m;
-    }
-    return l;
-  }
+  const centered = centerPages(rows);
+  const centerAt = visibleAt(centered.pages);
+  const originalAt = visibleAt(rows);
   function draw() {
     const bounds = video.getBoundingClientRect();
     if (!bounds.width || !bounds.height) return;
@@ -139,8 +190,9 @@ export function mountLyrics({
     canvas.style.height = height + 'px';
     ctx.setTransform(pw / 1280, 0, 0, ph / 720, 0, 0);
     ctx.clearRect(0, 0, 1280, 720);
-    const t = video.currentTime * 1000,
-      active = ordered.slice(upperBound(t - longest - 1), upperBound(t)).filter((r) => r.until > t);
+    const center = state.position === 'center';
+    const t = video.currentTime * 1000;
+    const active = center ? centerAt(t) : originalAt(t);
     const lines = active.filter((r) => r.words?.length);
     const accessible = lines
       .map((r) =>
@@ -180,7 +232,6 @@ export function mountLyrics({
           : state.font === 'bill'
             ? 'KaraokeBill, monospace'
             : 'KaraokeCondensed, sans-serif';
-      const center = state.position === 'center';
       const font = (size) => '700 ' + size + 'px ' + family;
       const startSize = rtl ? 64 : 68;
       ctx.font = font(startSize);
@@ -189,27 +240,23 @@ export function mountLyrics({
         Math.max(0, texts.length - 1) * ctx.measureText(' ').width;
       const natural = lineWidth(),
         size = Math.min(
-          center ? 112 : startSize,
+          center ? Math.min(112, centered.spacing * 0.875) : startSize,
           ((center ? 1220 : 1180) * startSize) / Math.max(1, natural),
         );
       ctx.font = font(size);
       ctx.direction = rtl ? 'rtl' : 'ltr';
       const widthLine = lineWidth();
       let x = rtl ? 640 + widthLine / 2 : 640 - widthLine / 2;
-      // Center a single active row exactly; separate simultaneous voices or a preview above/below it.
       const lane = row.lane ?? 585;
-      const lanes = [...new Set(lines.map((r) => r.lane ?? 585))].sort((a, b) => a - b);
       let y = lane - 14;
       if (center) {
-        const slot = lanes.indexOf(lane) - (lanes.length - 1) / 2;
-        const measured = ctx.measureText(texts.join(' '));
-        y =
-          360 +
-          slot * (lanes.length > 2 ? 85 : 112) +
-          (measured.actualBoundingBoxAscent - measured.actualBoundingBoxDescent) / 2;
+        const offset = (Math.floor(row.slot / 2) + 0.5) * (row.slot % 2 === 0 ? -1 : 1);
+        y = 360 + (offset + 0.26) * centered.spacing;
+      } else if (state.position === 'upper') {
+        const lanes = [...new Set(lines.map((r) => r.lane ?? 585))].sort((a, b) => a - b);
+        y = 105 + lanes.indexOf(lane) * 90;
       }
-      if (state.position === 'upper') y = 105 + lanes.indexOf(lane) * 90;
-      y = Math.max(size + 8, Math.min(696, y));
+      if (!center) y = Math.max(size + 8, Math.min(696, y));
       ctx.lineWidth = Math.max(6, size * 0.115);
       ctx.strokeStyle = '#100e10';
       const gap = ctx.measureText(' ').width;
